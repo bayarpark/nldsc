@@ -1,0 +1,3 @@
+pandas
+pybind11
+numpy
