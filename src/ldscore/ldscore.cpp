@@ -1,7 +1,10 @@
 #include <string>
-#include "ldscalc.h"
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+
+#include "ldscalc.h"
+#include "data.h"
 
 
 namespace py = pybind11;
@@ -18,5 +21,3 @@ PYBIND11_MODULE(ldscore, m) {
 
     m.def("calculate", &calculate);
 }
-
-
