@@ -46,6 +46,7 @@ def _join_ld_out(params: ArgParams, ld_a: List[float], ld_d: List[float]) -> pd.
     )), columns=COLUMNS)
 
 
+@elapsed_time
 def ld_calc(params: ArgParams):
     log.info(f"Data size: ({params.num_of_snp}, {params.num_of_org})")
 
@@ -61,5 +62,6 @@ def ld_calc(params: ArgParams):
     log.info(f"Done. File: {params.out}")
 
 
+@elapsed_time
 def h2_regression(params: ArgParams):
     raise NotImplementedError()

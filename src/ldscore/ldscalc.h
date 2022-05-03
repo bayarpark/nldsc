@@ -5,15 +5,19 @@
 #include "stream.h"
 
 
-
 class LDSCalculator {
 public:
+    std::ofstream fout;
+
     explicit LDSCalculator(LDScoreParams& params) {
         this->params_ = params;
         this->cache_ = ChunkCache(params);
         this->filter_ = SNPFilter(params);
         this->lds_add_ = std::vector<double>(params.num_of_snp, std::nan(""));
         this->lds_nadd_ = std::vector<double>(params.num_of_snp, std::nan(""));
+
+
+        fout.open("nldsc_time.log");
     }
 
     void calculate() {
@@ -29,6 +33,12 @@ public:
             } else {
                 cache_.pass_chunk();
             }
+
+//            auto begin = std::chrono::steady_clock::now();
+
+//            auto end = std::chrono::steady_clock::now();
+//            auto it_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+//            fout << "CURR: " << it_time << std::endl;
         }
     }
 
@@ -53,8 +63,8 @@ private:
         double nadd = 0;
 
         while (auto x = cache_.get()) {
-            add += Math::r2_adjusted(y, x.add(), params_.num_of_org);
-            nadd += Math::r2_adjusted(y, x.residuals(), params_.num_of_org);
+            add += Math::r2_adjusted(y, x.add());
+            nadd += Math::r2_adjusted(y, x.residuals());
         }
 
         lds_add_[idx] = add;

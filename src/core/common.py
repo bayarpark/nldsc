@@ -1,10 +1,24 @@
-from .logger import log, log_exit
-
 from abc import ABC, abstractmethod
-import os
-import pandas as pd
 from pathlib import Path
 from typing import List
+
+import os
+import time
+from datetime import timedelta
+import pandas as pd
+
+from .logger import log, log_exit
+
+
+def elapsed_time(func):
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        elapsed = str(timedelta(seconds=end - start))
+        log.info(f'Elapsed time: {elapsed}')
+        return result
+    return wrapper
 
 
 class NLDSCParameterError(Exception):

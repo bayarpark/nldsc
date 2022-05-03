@@ -35,15 +35,15 @@ dominant(uchar val) {
 }
 
 
-
-
 struct SNPInMemory {
 private:
-    bool is_eval_residuals_ = false;
-    arma::fvec residuals_;
-
     arma::fvec add_;
     arma::fvec nadd_;
+    arma::fvec residuals_;
+
+    bool ev_add_norm_ = false;
+    bool ev_nadd_norm_ = false;
+    bool ev_residuals_norm_ = false;
 
 public:
     float maf_ = 0;
@@ -59,21 +59,29 @@ public:
 
 
     const arma::fvec&
-    add() const {
+    add() {
+        if (not ev_add_norm_) {
+            add_ = Math::standardise(add_);
+            ev_add_norm_ = true;
+        }
         return add_;
     }
 
     const arma::fvec&
-    nadd() const {
+    nadd() {
+        if (not ev_nadd_norm_) {
+            nadd_ = Math::standardise(nadd_);
+            ev_nadd_norm_ = true;
+        }
         return nadd_;
     }
 
 
     const arma::fvec&
     residuals() {
-        if (not is_eval_residuals_) {
-            residuals_ = Math::regression_residuals(this->add(), this->nadd());
-            is_eval_residuals_ = true;
+        if (not ev_residuals_norm_) {
+            residuals_ = Math::standardise(Math::regression_residuals(this->add(), this->nadd()));
+            ev_residuals_norm_ = true;
         }
         return residuals_;
     }

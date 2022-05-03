@@ -2,20 +2,22 @@ cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "$<0:>${CMAKE_BINARY_DIR}")
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 project(ldscore)
 
 set(CMAKE_CXX_STANDARD 11)
 
 set(PYBIND11_DIR "pybind11")
-set(ARMA_COMPILE "-DARMA_DONT_USE_WRAPPER -larmadillo")
-set(LAPACK "-llapack")
-set(BLAS "-lblas")
+set(GCC_COMPILE_FLAGS "-llapack -lblas -march=native -larmadillo")
 
-add_definitions(
-        ${LAPACK},
-        ${BLAS},
-        ${ARMA_COMPILE}
-)
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COMPILE_FLAGS}")
 
 find_package(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDE_DIRS})

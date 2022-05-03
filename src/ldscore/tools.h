@@ -57,27 +57,33 @@ namespace Math {
         auto n = static_cast<double>(x.n_elem);
         double slope = (arma::dot(x, y) / n - x_mean*y_mean)
                        / (arma::dot(x, x) / n - x_mean*x_mean);
-        //double intercept = fit_intercept_ ? y_mean - coeff_ * x_mean : 0;
+        //double intercept = y_mean - slope * x_mean;
 
         return y - slope * x;
     }
 
+    inline float var_(const arma::fvec& vec, float mean) {
+        arma::fvec vvec = (vec - mean);
+        return arma::dot(vvec, vvec) * (1. / vvec.n_elem);
+    }
+    
+    inline arma::fvec
+    standardise(const arma::fvec& vec) {
+        float mean = arma::mean(vec);
+        float var = sqrt(var_(vec, mean));//sqrt(arma::var(vec));
+        return (vec - mean) / var;
+    }
+
 
     inline double
-    r2_adjusted(const arma::fvec& fst, const arma::fvec& snd, int n) {
-        double corr = arma::as_scalar(arma::cor(fst, snd));
+    r2_adjusted(const arma::fvec& fst, const arma::fvec& snd) {
+        //double corr = arma::as_scalar(arma::cor(fst, snd));
+        auto n = static_cast<double>(fst.n_elem);
+        double corr = arma::dot(fst, snd) * (1. / n);
         double r2 = corr*corr;
         return (1. - (1. - r2) * (n - 1) / (n - 2));
     }
-
-//    inline arma::fvec
-//    r2_adjusted(const arma::fvec& y, const arma::fmat& X, int n) {
-//        arma::fmat corr = arma::cor(y, X);
-//        double r2 = corr*corr;
-//        return (1. - (1. - r2) * (n - 1) / (n - 2));
-//    }
 }
-
 
 
 #endif //LDSCORE_TOOLS_H

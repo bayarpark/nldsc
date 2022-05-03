@@ -7,7 +7,6 @@
 
 #include <armadillo>
 
-
 #include <string>
 #include <utility>
 #include <map>
@@ -17,6 +16,7 @@
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <chrono>
 
 
 typedef unsigned char uchar;

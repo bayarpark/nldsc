@@ -18,8 +18,8 @@ public:
         this->params_ = params;
         this->stream_ = std::ifstream(params.bedfile, std::ios::binary);
         this->n_blocks_ = params_.num_of_org / 4 + (params_.num_of_org % 4 > 0);
-        this->buf = new char[1024*1024];
-        this->stream_.rdbuf()->pubsetbuf(buf, 1024*1024);
+        this->buf = new char[2048*2048];
+        this->stream_.rdbuf()->pubsetbuf(buf, 2048*2048);
         this->check_plink_magic_number();
     }
 
@@ -36,11 +36,8 @@ public:
         auto* snp = new uchar [params_.num_of_org];
         int bitpairs = 4;
         char curr_byte;
-
-        //stream_.read(buf, n_blocks_);
         for (int j = 0; j < n_blocks_; ++j) {
             stream_.get(curr_byte);
-            //uchar curr_byte = buf[j];
             if ((j == n_blocks_ - 1) and (params_.num_of_org % 4 != 0)) {
                 bitpairs = params_.num_of_org % 4;
             }
@@ -100,7 +97,6 @@ public:
         this->reader_ = BedStreamReader(params);
         this->filter_ = SNPFilter(params);
         this->cache_.reserve(params_.num_of_snp);
-        fout.open("read_time.log");
     }
 
     bool init_next_chunk() {
@@ -112,7 +108,7 @@ public:
 
 
     const arma::fvec&
-    get_add() const {
+    get_add() {
         return cache_[curr_snp_].add();
     }
 
@@ -148,9 +144,6 @@ private:
     int curr_bottom_ = left_snp_;
     int curr_snp_ = -1;
     int right_snp_ = -1;
-
-
-    std::ofstream fout;
 
 
     inline void extend_cache() {
