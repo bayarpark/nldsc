@@ -57,8 +57,6 @@ namespace Math {
         auto n = static_cast<double>(x.n_elem);
         double slope = (arma::dot(x, y) / n - x_mean*y_mean)
                        / (arma::dot(x, x) / n - x_mean*x_mean);
-        //double intercept = y_mean - slope * x_mean;
-
         return y - slope * x;
     }
 
@@ -67,11 +65,12 @@ namespace Math {
         return arma::dot(vvec, vvec) * (1. / vvec.n_elem);
     }
     
-    inline arma::fvec
-    standardise(const arma::fvec& vec) {
+    inline void
+    standardise(arma::fvec& vec) {
         float mean = arma::mean(vec);
-        float var = sqrt(var_(vec, mean));//sqrt(arma::var(vec));
-        return (vec - mean) / var;
+        float var = sqrt(var_(vec, mean));
+        vec -= mean;
+        vec /= var;
     }
 
 

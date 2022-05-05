@@ -3,6 +3,7 @@
 
 #include "data.h"
 #include "stream.h"
+#include "logger.h"
 
 
 class LDSCalculator {
@@ -15,9 +16,6 @@ public:
         this->filter_ = SNPFilter(params);
         this->lds_add_ = std::vector<double>(params.num_of_snp, std::nan(""));
         this->lds_nadd_ = std::vector<double>(params.num_of_snp, std::nan(""));
-
-
-        fout.open("nldsc_time.log");
     }
 
     void calculate() {
@@ -33,12 +31,6 @@ public:
             } else {
                 cache_.pass_chunk();
             }
-
-//            auto begin = std::chrono::steady_clock::now();
-
-//            auto end = std::chrono::steady_clock::now();
-//            auto it_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-//            fout << "CURR: " << it_time << std::endl;
         }
     }
 
@@ -62,14 +54,26 @@ private:
         double add = 1;
         double nadd = 0;
 
-        while (auto x = cache_.get()) {
+#ifdef PARALLEL_LDS
+        auto indices = cache_.get_chunk();
+        #pragma omp parallel for schedule(static) \
+            shared(cache_, y, indices) reduction(+:nadd, add) default(none)
+        for (unsigned int index : indices) {
+            auto snp = cache_[index];
+            add += Math::r2_adjusted(y, snp.add());
+            nadd += Math::r2_adjusted(y, snp.residuals());
+        }
+#else
+        while (auto x = cache_.get_next()) {
             add += Math::r2_adjusted(y, x.add());
             nadd += Math::r2_adjusted(y, x.residuals());
         }
-
+#endif
         lds_add_[idx] = add;
         lds_nadd_[idx] = nadd;
     }
+
+
 };
 
 

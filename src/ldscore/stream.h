@@ -116,7 +116,7 @@ public:
         ++curr_snp_;
     }
 
-    const SNPInMemory& get() {
+    inline const SNPInMemory& get_next() {
         for (int i = curr_bottom_; i <= right_snp_; ++i) {
             if (cache_[i] and filter_.filter(curr_snp_, i)) {
                 if (i != curr_snp_) {
@@ -124,11 +124,30 @@ public:
                     return cache_[i];
                 }
             } else if (left_snp_ == i and left_snp_ < curr_snp_) {
-                cache_[left_snp_].reset();
+                cache_[left_snp_].release();
                 ++left_snp_;
             }
         }
-        return bottom_;
+        return EmptySNP::instance();
+    }
+
+    inline std::vector<uint> get_chunk() {
+        std::vector<uint> indices;
+        for (int i = left_snp_; i <= right_snp_; ++i) {
+            if (cache_[i] and filter_.filter(curr_snp_, i)) {
+                if (i != curr_snp_) {
+                    indices.push_back(i);
+                }
+            } else if (left_snp_ == i and left_snp_ < curr_snp_) {
+                cache_[left_snp_].release();
+                ++left_snp_;
+            }
+        }
+        return indices;
+    }
+
+    const SNPInMemory& operator[](uint snp_idx) const {
+        return cache_[snp_idx];
     }
 
 
@@ -137,8 +156,6 @@ private:
     BedStreamReader reader_;
     SNPFilter filter_;
     std::vector<SNPInMemory> cache_;
-
-    SNPInMemory bottom_;
 
     int left_snp_ = 0;
     int curr_bottom_ = left_snp_;

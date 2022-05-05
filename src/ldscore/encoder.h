@@ -51,8 +51,10 @@ public:
 
     SNPInMemory() = default;
     SNPInMemory(float *add, float *nadd, float maf, uint n_elem) {
-        this->add_ = arma::fvec(add, n_elem);
+        this->add_ =  arma::fvec(add, n_elem);
         this->nadd_ = arma::fvec(nadd, n_elem);
+        delete[] add;
+        delete[] nadd;
         this->maf_ = maf;
         this->use_ = true;
     }
@@ -61,7 +63,7 @@ public:
     const arma::fvec&
     add() {
         if (not ev_add_norm_) {
-            add_ = Math::standardise(add_);
+            Math::standardise(add_);
             ev_add_norm_ = true;
         }
         return add_;
@@ -70,7 +72,7 @@ public:
     const arma::fvec&
     nadd() {
         if (not ev_nadd_norm_) {
-            nadd_ = Math::standardise(nadd_);
+            Math::standardise(nadd_);
             ev_nadd_norm_ = true;
         }
         return nadd_;
@@ -80,14 +82,14 @@ public:
     const arma::fvec&
     residuals() {
         if (not ev_residuals_norm_) {
-            residuals_ = Math::standardise(Math::regression_residuals(this->add(), this->nadd()));
+            residuals_ = Math::regression_residuals(this->add(), this->nadd());
+            Math::standardise(residuals_);
             ev_residuals_norm_ = true;
         }
         return residuals_;
     }
 
-
-    void reset() {
+    void release() {
         if (use_) {
             add_.reset();
             nadd_.reset();
@@ -99,6 +101,18 @@ public:
     explicit operator bool() const { return use_; }
 };
 
+
+class EmptySNP : public SNPInMemory{
+private:
+    EmptySNP() {};
+public:
+    static EmptySNP& instance() {
+        static EmptySNP instance;
+        return instance;
+    }
+    EmptySNP(EmptySNP const &) = delete;
+    void operator=(EmptySNP const &) = delete;
+};
 
 
 inline SNPInMemory
