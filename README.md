@@ -28,7 +28,7 @@ make build
 
 **Calculation of additive and non-additive LD Scores**
 ```
-./nldsc.py -ld -p <path/to/[.bed|.bim|.fam]> -cm 1 --maf 0.01 --out <path/to/result.csv>
+./nldsc.py -ld -p <path/to/[.bed|.bim|.fam]> --ld-wind-cm 1 --maf 0.01 --out <path/to/result.csv>
 ```
 
 ---
