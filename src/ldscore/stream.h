@@ -108,7 +108,7 @@ public:
 
 
     const arma::fvec&
-    get_add() {
+    get_add() const {
         return cache_[curr_snp_].add();
     }
 
@@ -116,7 +116,8 @@ public:
         ++curr_snp_;
     }
 
-    inline const SNPInMemory& get_next() {
+    inline const
+    SNPInMemory& get_next() {
         for (int i = curr_bottom_; i <= right_snp_; ++i) {
             if (cache_[i] and filter_.filter(curr_snp_, i)) {
                 if (i != curr_snp_) {
@@ -131,7 +132,8 @@ public:
         return EmptySNP::instance();
     }
 
-    inline std::vector<uint> get_chunk() {
+    inline std::vector<uint>
+    get_chunk() {
         std::vector<uint> indices;
         for (int i = left_snp_; i <= right_snp_; ++i) {
             if (cache_[i] and filter_.filter(curr_snp_, i)) {
@@ -163,7 +165,8 @@ private:
     int right_snp_ = -1;
 
 
-    inline void extend_cache() {
+    inline void
+    extend_cache() {
         do {
             if (right_snp_ + 1 >= params_.num_of_snp)
                 break;
@@ -171,12 +174,8 @@ private:
 
             if (filter_.is_used(right_snp_)) {
                 auto snp = reader_.read();
-                auto encoded = apply_encoding(snp, this->params_.num_of_org);
-                if (filter_.filter_maf(encoded.maf_)) {
-                    cache_.push_back(encoded);
-                } else {
-                    cache_.emplace_back();
-                }
+                auto encoded = apply_encoding(snp, this->params_.num_of_org, params_.maf);
+                cache_.push_back(encoded);
             } else {
                 cache_.emplace_back();
                 reader_.pass();

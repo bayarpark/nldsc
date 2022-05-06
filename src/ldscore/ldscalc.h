@@ -3,13 +3,11 @@
 
 #include "data.h"
 #include "stream.h"
-
+#include "logger.h"
 
 
 class LDSCalculator {
 public:
-    std::ofstream fout;
-
     explicit LDSCalculator(LDScoreParams& params) {
         this->params_ = params;
         this->cache_ = ChunkCache(params);
@@ -31,6 +29,7 @@ public:
             } else {
                 cache_.pass_chunk();
             }
+              log_ld_progress(idx, params_.num_of_snp)
         }
     }
 
@@ -58,8 +57,8 @@ private:
         auto indices = cache_.get_chunk();
         #pragma omp parallel for schedule(static) \
             shared(cache_, y, indices) reduction(+:nadd, add) default(none)
-        for (unsigned int index : indices) {
-            auto snp = cache_[index];
+        for (auto index : indices) {
+            const SNPInMemory& snp = cache_[index];
             add += Math::r2_adjusted(y, snp.add());
             nadd += Math::r2_adjusted(y, snp.residuals());
         }
@@ -72,8 +71,6 @@ private:
         lds_add_[idx] = add;
         lds_nadd_[idx] = nadd;
     }
-
-
 };
 
 
