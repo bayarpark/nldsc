@@ -8,7 +8,9 @@ private:
     LDScoreParams params_;
 public:
     SNPFilter() = default;
-    explicit SNPFilter(LDScoreParams &params) {
+
+    explicit
+    SNPFilter(LDScoreParams &params) {
         this->params_ = params;
     }
 
@@ -26,6 +28,11 @@ public:
     filter_maf(double maf) const
     {
         return maf > params_.maf;
+    }
+
+    inline bool
+    filter_residuals_std(double std) {
+        return std > params_.std_threshold;
     }
 
     inline bool
@@ -60,23 +67,36 @@ namespace Math {
         return y - slope * x;
     }
 
-    inline float var_(const arma::fvec& vec, float mean) {
+    inline float
+    var_(const arma::fvec& vec, float mean) {
         arma::fvec vvec = (vec - mean);
         return arma::dot(vvec, vvec) * (1. / vvec.n_elem);
     }
-    
+
+    inline void
+    standardise(arma::fvec& vec, float mean, float std) {
+        vec -= mean;
+        vec /= std;
+    }
+
+    inline void
+    standardise(arma::fvec& vec, float* std_ptr) {
+        float mean = arma::mean(vec);
+        float std = sqrt(var_(vec, mean));
+        standardise(vec, mean, std);
+        (*std_ptr) = std;
+    }
+
     inline void
     standardise(arma::fvec& vec) {
         float mean = arma::mean(vec);
-        float var = sqrt(var_(vec, mean));
-        vec -= mean;
-        vec /= var;
+        float std = sqrt(var_(vec, mean));
+        standardise(vec, mean, std);
     }
 
 
     inline double
     r2_adjusted(const arma::fvec& fst, const arma::fvec& snd) {
-        //double corr = arma::as_scalar(arma::cor(fst, snd));
         auto n = static_cast<double>(fst.n_elem);
         double corr = arma::dot(fst, snd) * (1. / n);
         double r2 = corr*corr;

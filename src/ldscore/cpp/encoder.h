@@ -37,33 +37,47 @@ dominant(uchar val) {
 
 struct SNPInMemory {
 private:
-    arma::fvec add_;
-    arma::fvec residuals_;
-    bool use_ = false;
+    arma::fvec add_;         // Standardised SNP in additive encoding
+    arma::fvec residuals_;   // Standardised non-additive residuals
+    float maf_ = MISSING;    //
+    float residuals_std_;    //
+    bool use_ = false;       //
+
 
 public:
-    float maf_ = 0;
 
     SNPInMemory() = default;
     SNPInMemory(float* mem_add, float* mem_nadd, float maf, uint n_elem) {
+
         this->add_ = arma::fvec(mem_add, n_elem);
         this->residuals_ = Math::regression_residuals(add_, arma::fvec(mem_nadd, n_elem));
-        Math::standardise(this->add_);
-        Math::standardise(this->residuals_);
         this->maf_ = maf;
         this->use_ = true;
+        Math::standardise(this->add_);
+
+        Math::standardise(this->residuals_, &(this->residuals_std_));
 
         delete[] mem_add;
         delete[] mem_nadd;
     }
 
+    double
+    maf() const {
+        return maf_;
+    }
+
+    double
+    residuals_std() const {
+        return residuals_std_;
+    }
+
     const arma::fvec&
-    add() {
+    add() const {
         return add_;
     }
 
     const arma::fvec&
-    residuals() {
+    residuals() const {
         return residuals_;
     }
 

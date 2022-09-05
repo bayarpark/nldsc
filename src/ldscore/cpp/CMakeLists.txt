@@ -28,13 +28,14 @@ set(CMAKE_CXX_STANDARD 11)
 # armadillo
 find_package(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDE_DIRS})
-set(GCC_COMPILE_FLAGS "-llapack -lblas -march=native -larmadillo -fopenmp")
+set(GCC_COMPILE_FLAGS "-llapack -lblas -march=native -larmadillo -fopenmp -fno-fast-math")
+#set(GCC_COMPILE_FLAGS "-static=-llapack -lblas -larmadillo -fopenmp -fno-fast-math -march=ivybridge")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COMPILE_FLAGS}")
 
 
 # pybind11
-set(PYBIND11_DIR "pybind11")
-add_subdirectory(${PYBIND11_DIR} pybind11)
+set(PYBIND11_DIR "../pybind11")
+add_subdirectory(${PYBIND11_DIR} ../pybind11)
 pybind11_add_module(${PROJECT_NAME} ldscore.cpp)
 
 

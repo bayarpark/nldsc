@@ -9,7 +9,7 @@
 
 class BedStreamReader {
     /**
-     *
+     * BED File reader (SNP-wise; raw)
      */
 public:
     BedStreamReader() = default;
@@ -25,9 +25,9 @@ public:
 
     inline uchar* read() {
         /**
-         * Reads and returns the next SNP from the .BED file
+         * Reads the next SNP from the .BED file
          *
-         * @return array (uchar*) in specific encoding (see Encoder)
+         * @return array (uchar*) in raw encoding (see Encoder)
          */
         ++curr_snp_;
         if (curr_snp_ > params_.num_of_snp) {
@@ -51,7 +51,7 @@ public:
 
     inline void pass() {
         /**
-         * Passes the next SNP.
+         * Passes the next SNP
          */
         ++curr_snp_;
         if (curr_snp_ < params_.num_of_snp) {
@@ -88,6 +88,9 @@ private:
 
 
 class ChunkCache {
+    /**
+     * Cached sliding window through BED file
+     */
 public:
 
     ChunkCache() = default;
@@ -174,7 +177,7 @@ private:
 
             if (filter_.is_used(right_snp_)) {
                 auto snp = reader_.read();
-                auto encoded = apply_encoding(snp, this->params_.num_of_org, params_.maf);
+                const SNPInMemory& encoded = apply_encoding(snp, this->params_.num_of_org, params_.maf);
                 cache_.push_back(encoded);
             } else {
                 cache_.emplace_back();
