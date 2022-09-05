@@ -45,5 +45,17 @@ parser.add_argument(
 parser.add_argument(
     "-maf",
     "--maf",
-    help="Minor allele frequency filter",
+    help="Minor allele frequency threshold",
+)
+
+parser.add_argument(
+    "-std",
+    "--std-thr",
+    help="Standard deviation threshold for regression residuals",
+)
+
+parser.add_argument(
+    "-v",
+    "--verbose",
+    default=2
 )

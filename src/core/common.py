@@ -114,10 +114,10 @@ class BIMFile(PLINKFile):
     COLUMNS = (
         'CHR',  # Chromosome code (either an integer, or 'X'/'Y'/'XY'/'MT'; '0' indicates unknown) or name
         'SNP',  # Variant identifier
-        'CM',  # Position in morgans or centimorgans
-        'BP',  # Base-pair coordinate (1-based; limited to 2^31-2)
-        'A1',  # Allele 1 (corresponding to clear bits in .bed; usually minor)
-        'A2'  # Allele 2 (corresponding to set bits in .bed; usually major)
+        'CM',   # Position in morgans or centimorgans
+        'BP',   # Base-pair coordinate (1-based; limited to 2^31-2)
+        'A1',   # Allele 1 (corresponding to clear bits in .bed; usually minor)
+        'A2'    # Allele 2 (corresponding to set bits in .bed; usually major)
     )
 
     def __init__(self, path: str, **kwargs):
@@ -190,10 +190,24 @@ class MAF(Data):
 
     def _validate(self):
         if not (0 <= self._data < 1):
-            raise NLDSCParameterError('Minor allele frequency must be between 0 and 0.99!')
+            raise NLDSCParameterError('Minor allele frequency must be between 0 and 1!')
+
+
+class ResidualsSTDThreshold(Data):
+    def __init__(self, std_thr: float):
+        self._data = float(std_thr)
+        self._validate()
+
+    def __repr__(self) -> str:
+        return f"ResidualsSTDThreshold(std_thr={self._data})"
+
+    def _validate(self):
+        if not (0 <= self._data < 1):
+            raise NLDSCParameterError('std threshold must be between 0 and 1!')
 
 
 class ArgParams:
+
     def __init__(self,
                  out: str,
                  ld: bool = None,
@@ -202,6 +216,9 @@ class ArgParams:
                  ld_wind_kb: float = None,
                  ld_wind_cm: float = None,
                  maf: float = 0,
+                 std_thr: float = 0.0001,
+                 verbose: int = 2,
+                 **kwargs
                  ):
         """
 
@@ -219,6 +236,7 @@ class ArgParams:
             Minor allele frequency lower bound
         """
         self.out = out
+        self.verbose = verbose
 
         self.ld = ld
         self.h2 = h2
@@ -235,6 +253,7 @@ class ArgParams:
                 self.ld_wind = LDWindow(ld_wind_cm, metric='cm')
 
             self._maf = MAF(maf)
+            self._std_thr = ResidualsSTDThreshold(std_thr)
 
     @property
     def bedfile(self) -> str:
@@ -258,4 +277,17 @@ class ArgParams:
     @property
     def maf(self) -> float:
         return self._maf.data
+
+    @property
+    def std_threshold(self) -> float:
+        return self._std_thr.data
+
+
+class GWASSumStats(Data):   # TODO
+    def __init__(self, ):
+        ...
+
+    def __repr__(self):
+        return 'ColumnDescription'
+
 

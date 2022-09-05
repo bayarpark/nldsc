@@ -21,7 +21,7 @@ class ColorLogFormatter(logging.Formatter):
         "DEBUG": {'prefix': '', 'suffix': ''},
         "INFO": {'prefix': BOLD_GREEN + " ❱ " + GREEN, 'suffix': END},
         "WARNING": {'prefix': BOLD_YELLOW + " ⚠ " +BOLD_YELLOW, 'suffix': END},
-        "ERROR": {'prefix': BOLD_RED + " ❌ " + BOLD_RED, 'suffix': END},
+        "ERROR": {'prefix': BOLD_RED + " ⚠ " + BOLD_RED, 'suffix': END},
         "CRITICAL": {'prefix': BOLD_RED + " ❌ " + BOLD_RED, 'suffix': END},
     }
 
@@ -52,5 +52,5 @@ log.addHandler(stream_handler)
 
 
 def log_exit(msg):
-    log.error(msg)
+    log.critical(msg)
     exit(1)
