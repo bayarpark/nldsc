@@ -1,5 +1,4 @@
-#ifndef LDSCORE_TOOLS_H
-#define LDSCORE_TOOLS_H
+#pragma once
 
 #include "data.h"
 
@@ -9,35 +8,38 @@ private:
 public:
     SNPFilter() = default;
 
-    explicit
-    SNPFilter(LDScoreParams &params) {
+    explicit SNPFilter(LDScoreParams &params) {
         this->params_ = params;
     }
 
-    inline bool
+    [[nodiscard]] inline bool
     is_used(int idx) const
     {
-        if (0 <= idx and idx < params_.num_of_snp) {
+        if (0 <= idx and idx < params_.n_snp) {
             return params_.positions[idx] >= 0;
         } else {
             return false;
         }
     }
 
-    inline bool
-    filter_maf(double maf) const
+    [[nodiscard]] inline bool
+    maf(double maf) const
     {
         return maf > params_.maf;
     }
 
-    inline bool
-    filter_residuals_std(double std) {
-        return std > params_.std_threshold;
+    [[nodiscard]] inline bool
+    residuals_std(double std) const {
+        return std > params_.std_thr;
     }
 
-    inline bool
-    filter(int fst, int snd) const
-    {
+    [[nodiscard]] inline bool
+    r2_dom(double r2) const {
+        return r2 > params_.rsq_thr;
+    }
+
+    [[nodiscard]] inline bool
+    filter(int fst, int snd) const {
         if (is_used(fst) and is_used(snd)) {
             auto dist = std::abs(params_.positions[snd] - params_.positions[fst]);
             return dist <= params_.ld_wind;
@@ -49,9 +51,7 @@ public:
 
 
 namespace Math {
-    inline arma::fvec
-    regression_residuals(const arma::fvec &x, const arma::fvec &y)
-    {
+    inline arma::fvec regression_residuals(const arma::fvec &x, const arma::fvec &y) {
         /**
          * Fitting 1d-linear regression and calculates regression residuals
          * @param x: Regressor
@@ -67,42 +67,27 @@ namespace Math {
         return y - slope * x;
     }
 
-    inline float
-    var_(const arma::fvec& vec, float mean) {
+    inline float var_(const arma::fvec& vec, float mean) {
         arma::fvec vvec = (vec - mean);
-        return arma::dot(vvec, vvec) * (1. / vvec.n_elem);
+        return arma::dot(vvec, vvec) * (1. / static_cast<double>(vvec.n_elem));
     }
 
-    inline void
-    standardise(arma::fvec& vec, float mean, float std) {
+    inline void standardise(arma::fvec& vec, float mean, float std) {
         vec -= mean;
         vec /= std;
     }
 
-    inline void
-    standardise(arma::fvec& vec, float* std_ptr) {
+    inline float standardise(arma::fvec& vec) {
         float mean = arma::mean(vec);
         float std = sqrt(var_(vec, mean));
         standardise(vec, mean, std);
-        (*std_ptr) = std;
+        return std;
     }
 
-    inline void
-    standardise(arma::fvec& vec) {
-        float mean = arma::mean(vec);
-        float std = sqrt(var_(vec, mean));
-        standardise(vec, mean, std);
-    }
-
-
-    inline double
-    r2_adjusted(const arma::fvec& fst, const arma::fvec& snd) {
+    inline double r2_adjusted(const arma::fvec& fst, const arma::fvec& snd) {
         auto n = static_cast<double>(fst.n_elem);
         double corr = arma::dot(fst, snd) * (1. / n);
         double r2 = corr*corr;
         return (1. - (1. - r2) * (n - 1) / (n - 2));
     }
 }
-
-
-#endif //LDSCORE_TOOLS_H

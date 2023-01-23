@@ -1,47 +1,10 @@
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List
+from abc import ABC
 
 import os
-import time
-from datetime import timedelta
 import pandas as pd
 
-from .logger import log, log_exit
-
-
-def elapsed_time(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        elapsed = str(timedelta(seconds=end - start))
-        log.info(f'Elapsed time: {elapsed}')
-        return result
-    return wrapper
-
-
-class NLDSCParameterError(Exception):
-    pass
-
-
-class Data(ABC):
-    _data = None
-
-    @property
-    def data(self):
-        return self._data
-
-    def __str__(self):
-        return self.__repr__()
-
-    @abstractmethod
-    def __repr__(self):
-        pass
-
-    @abstractmethod
-    def _validate(self):
-        pass
+from core.common import *
 
 
 class LDWindow(Data):
@@ -126,7 +89,7 @@ class BIMFile(PLINKFile):
         self._validate()
 
     def __repr__(self):
-        return f"BIMFile(num_of_snp={self.num_of_snp})"
+        return f"BIMFile(n_snp={self.n_snp})"
 
     @property
     def chr(self) -> pd.Series:
@@ -145,7 +108,7 @@ class BIMFile(PLINKFile):
         return self._data['BP']
 
     @property
-    def num_of_snp(self) -> int:
+    def n_snp(self) -> int:
         return len(self._data)
 
     def _validate(self):
@@ -170,10 +133,10 @@ class FAMFile(PLINKFile):
         self._validate()
 
     def __repr__(self):
-        return f"FAMFile(num_of_org={self.num_of_org})"
+        return f"FAMFile(n_org={self.n_org})"
 
     @property
-    def num_of_org(self) -> int:
+    def n_org(self) -> int:
         return len(self._data)
 
     def _validate(self):
@@ -203,91 +166,17 @@ class ResidualsSTDThreshold(Data):
 
     def _validate(self):
         if not (0 <= self._data < 1):
-            raise NLDSCParameterError('std threshold must be between 0 and 1!')
+            raise NLDSCParameterError('standard deviation threshold must be between 0 and 1!')
 
 
-class ArgParams:
+class RSQThreshold(Data):
+    def __init__(self, rsq_thr: float):
+        self._data = float(rsq_thr)
+        self._validate()
 
-    def __init__(self,
-                 out: str,
-                 ld: bool = None,
-                 h2: bool = None,
-                 bfile: str = None,
-                 ld_wind_kb: float = None,
-                 ld_wind_cm: float = None,
-                 maf: float = 0,
-                 std_thr: float = 0.0001,
-                 verbose: int = 2,
-                 **kwargs
-                 ):
-        """
+    def __repr__(self) -> str:
+        return f"RSQThreshold(std_thr={self._data})"
 
-        Parameters
-        ----------
-        out : str
-            Output filename prefix
-        bfile : str
-            Prefix for PLINK .bed/.bim/.fam file or path to one of it
-        ld_wind_kb : float
-            Window size to be used for estimating LD Scores in units of kilobase-pairs (kb)
-        ld_wind_cm : float
-            Window size to be used for estimating LD Scores in units of centiMorgans (cM)
-        maf : float, default is MAF > 0
-            Minor allele frequency lower bound
-        """
-        self.out = out
-        self.verbose = verbose
-
-        self.ld = ld
-        self.h2 = h2
-        if self.ld:
-            if bfile:
-                self.bed, self.bim, self.fam = PLINKFile.parse(bfile)
-            else:
-                log_exit('Please, specify bfile - the path to .BED/.BIM/.FAM files')
-            if sum(map(bool, [ld_wind_kb, ld_wind_cm])) != 1:
-                log_exit('Please, specify exactly one --ld-wind option')
-            elif ld_wind_kb:
-                self.ld_wind = LDWindow(ld_wind_kb, metric='kbp')
-            elif ld_wind_cm:
-                self.ld_wind = LDWindow(ld_wind_cm, metric='cm')
-
-            self._maf = MAF(maf)
-            self._std_thr = ResidualsSTDThreshold(std_thr)
-
-    @property
-    def bedfile(self) -> str:
-        return self.bed.data
-
-    @property
-    def num_of_snp(self) -> int:
-        return self.bim.num_of_snp
-
-    @property
-    def num_of_org(self) -> int:
-        return self.fam.num_of_org
-
-    @property
-    def positions(self) -> List[float]:
-        if self.ld_wind.metric == 'bp':
-            return self.bim.bp.tolist()
-        else:
-            return self.bim.cm.tolist()
-
-    @property
-    def maf(self) -> float:
-        return self._maf.data
-
-    @property
-    def std_threshold(self) -> float:
-        return self._std_thr.data
-
-
-class GWASSumStats(Data):   # TODO
-    def __init__(self, ):
-        ...
-
-    def __repr__(self):
-        return 'ColumnDescription'
-
-
+    def _validate(self):
+        if not (0 <= self._data < 0.1):
+            raise NLDSCParameterError('r-squared threshold must be between 0 and 0.1!')

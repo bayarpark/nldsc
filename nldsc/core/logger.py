@@ -51,6 +51,9 @@ stream_handler.setFormatter(ColorLogFormatter())
 log.addHandler(stream_handler)
 
 
-def log_exit(msg):
+def log_exit(msg, exception=None):
     log.critical(msg)
-    exit(1)
+    if exception is not None:
+        raise exception
+    else:
+        raise RuntimeError("See description above")
