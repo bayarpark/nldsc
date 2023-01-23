@@ -4,18 +4,19 @@
 
 
 ## Prerequisites
-**Ubuntu 20.04:**
-1) Install Python 3.8 or higher
-2) Install CMake version 3.20 or higher [directly](https://cmake.org/install/) or using [this](https://askubuntu.com/questions/355565/how-do-i-install-the-latest-version-of-cmake-from-the-command-line) instruction. 
-4) Then run the following:
+- `Python>=3.8`
+- `CMake>=3.20`, `Ninja`
+- `Armadillo`, `gfotran`, `BLAS`/`OpenBLAS`, `LAPACK`
+
+## Installation
+**Ubuntu 20.04, 22.04:**
+Firstly, install essential libraries: 
 ```
 sudo apt update
 sudo apt install -y ninja-build gfortran libblas-dev liblapack-dev libarmadillo-dev
 ```
 
-
-## Installation
-Make sure you have installed all libraries from the prerequisites.
+Make sure you have installed all libraries from the prerequisites. Then, run the following commands:
 ```
 git clone --recursive https://github.com/bayarpark/nldsc.git
 cd nldsc
@@ -23,12 +24,20 @@ pip install -r requirements.txt
 make build
 ```
 
+**Install via Conda** (Linux and MacOS only) 
 
-## Usage sample
+`%todo%`
 
-**Calculation of additive and non-additive LD Scores**
+
+## LD Score Estimation
+
+```bash
+nldsc ld --bfile <prefix/to/[.bed|.bim|.fam]> --ld-wind-cm 1 -maf 0.0001 --std-thr 1e-5 --out <prefix/to/result>
 ```
-./nldsc.py -ld -p <path/to/[.bed|.bim|.fam]> --ld-wind-cm 1 --maf 0.01 --out <path/to/result.csv>
+
+## Heritability Estimation
+```bash
+%otod%
 ```
 
 ---
