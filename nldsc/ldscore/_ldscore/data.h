@@ -50,8 +50,8 @@ struct LDScoreParams {
                   int n_org,
                   double ld_wind,
                   double maf,
-                  double std_threshold,
-                  double rsq_threshold,
+                  double std_thr,
+                  double rsq_thr,
                   const std::vector<double>& positions) {
 
         this->bedfile = bedfile;
@@ -59,8 +59,8 @@ struct LDScoreParams {
         this->n_org = n_org;
         this->ld_wind = ld_wind;
         this->maf = maf;
-        this->std_thr = std_threshold;
-        this->rsq_thr = rsq_threshold;
+        this->std_thr = std_thr;
+        this->rsq_thr = rsq_thr;
         this->positions = positions;
     }
 };

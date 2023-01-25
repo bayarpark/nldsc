@@ -1,10 +1,15 @@
 #pragma once
 
+#include "indicators.h"
 #include "data.h"
 #include "stream.h"
 
 
 LDScoreResult calculate(LDScoreParams& params) {
+    indicators::show_console_cursor(false);
+
+    auto bar = indicators::get_ld_progress_bar(params.n_snp);
+
     ChunkwiseReader cache(params);
     SNPFilter filter(params);
 
@@ -51,6 +56,10 @@ LDScoreResult calculate(LDScoreParams& params) {
         } else {
             cache.pass_chunk();
         }
+        bar.tick();
     }
+
+    indicators::show_console_cursor(true);
+
     return {l2, l2d, cache.mafs(), cache.residual_stds(), l2_ws, l2d_ws, l2d_wse};
 }

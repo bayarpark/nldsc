@@ -66,6 +66,10 @@ def estimate_lds(
     ld_wind_ = LDWindow(ld_wind, metric=wind_metric)
     maf_thr_ = MAF(maf_thr)
     std_thr_ = ResidualsSTDThreshold(std_thr)
+
+    if rsq_thr is None:
+        rsq_thr = 1. / bim_.n_snp
+
     rsq_thr_ = RSQThreshold(rsq_thr)
 
     log.info(f"Input: {bed_.data}, size: (M={bim_.n_snp}, N={fam_.n_org})")
