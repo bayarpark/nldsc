@@ -12,15 +12,18 @@ Last column = intercept.
 """
 
 from collections import namedtuple
+from dataclasses import dataclass
 from typing import Tuple
 from abc import abstractmethod, ABC
 
 import numpy as np
 from scipy import stats as ss
 
-import jackknife as jk
-import irwls
-from utils import cols
+from core.logger import log
+
+from . import jackknife as jk
+from . import irwls
+from .utils import cols
 
 
 def h2_obs_to_liability(h2_obs, P, K):
@@ -107,6 +110,24 @@ def _eval_p_value(z_score):
     return p_value
 
 
+@dataclass
+class Coefficient:
+    value: np.ndarray | float
+    cov: np.ndarray | float = None
+    std: np.ndarray | float = None
+    name: str = None
+
+    def __str__(self) -> str:
+        string = "Estimated: "
+        if self.name:
+            string += f"{self.name} "
+        string += f"{self.value} "
+        if self.std:
+            string += f"± {self.std} std."
+
+        return string
+
+
 class LDScoreRegression(ABC):
     null_intercept = None
 
@@ -117,7 +138,8 @@ class LDScoreRegression(ABC):
             intercept=None,
             slow=False,
             step1_idx_mask=None,
-            old_weights=False
+            old_weights=False,
+            additive_weights=None
     ):
 
         self._validate(y, x, w, M, N)
@@ -134,27 +156,28 @@ class LDScoreRegression(ABC):
         self.M = M
         tot_agg = self.aggregate(y, x_tot, N, M_tot, intercept)
 
-        initial_w = self._update_weights(
-            x_tot, w, N, M_tot, tot_agg, intercept)
+        if additive_weights is None:
+            initial_w = self._update_weights(
+                x_tot, w, N, M_tot, tot_agg, intercept)
+        else:
+            initial_w = additive_weights
 
         N_mean = float(np.mean(N))  # keep condition number low
         x = np.multiply(N, x) / N_mean
 
         if not self.constrain_intercept:
             x, x_tot = append_intercept(x, x_tot)
-            yp = y
+            yp = y.copy()
         else:
             yp = y - intercept
             self.intercept_std = np.nan  # replaced "NaN"
 
-        self.twostep_filtered = None
         if step1_idx_mask is not None and self.constrain_intercept:
             raise ValueError("two-step is not compatible with constrain_intercept.")
         elif step1_idx_mask is not None and self.n_annot > 1:
             raise ValueError("two-step not compatible with partitioned LD Score yet.")
         elif step1_idx_mask is not None:  # two-step routine
             n1 = int(np.sum(step1_idx_mask))  # number of object that less than two-step constant (30)
-            self.twostep_filtered = n_snp - n1
             x1 = x[step1_idx_mask.flatten(), :]
             yp1, w1, N1, initial_w1 = (a[step1_idx_mask].reshape((n1, 1)) for a in [yp, w, N, initial_w])
 
@@ -165,13 +188,13 @@ class LDScoreRegression(ABC):
                 x1, yp1, irwls_ufunc_1, n_blocks, slow=slow, w=initial_w1
             )
 
-            step1_intercept, _ = self._extract_intercept(step1_jknife)
-            yp -= step1_intercept
+            step1_intercept = self._extract_intercept(step1_jknife)
+            yp -= step1_intercept.value
             x = remove_intercept(x)
             x_tot = remove_intercept(x_tot)
 
             irwls_ufunc_2 = lambda a: self._update_func(
-                a, x_tot, w, N, M_tot, N_mean, step1_intercept)
+                a, x_tot, w, N, M_tot, N_mean, step1_intercept.value)
 
             separators = update_stdparators(step1_jknife.separators, step1_idx_mask)
 
@@ -195,22 +218,22 @@ class LDScoreRegression(ABC):
                 a, x_tot, w, N, M_tot, N_mean, intercept
             )
             jknife = irwls.irwls(
-                x, yp, irwls_ufunc, n_blocks, slow=slow, w=initial_w
+                x, yp, irwls_ufunc, n_blocks, slow=slow, w=initial_w, is_dominant=(additive_weights is not None)
             )
 
         self.jknife = jknife
 
-        self.coef, self.coef_cov, self.coef_std = self._extract_coefs(jknife, N_mean)
-        self.cat, self.cat_cov, self.cat_std = self._eval_catwise(M, self.coef, self.coef_cov)
-        self.tot, self.tot_cov, self.tot_std = self._eval_total(self.cat, self.cat_cov)
+        self.coefficients = self._extract_coefs(jknife, N_mean)
+        self.category = self._eval_catwise(M, self.coefficients.value, self.coefficients.cov)
+        self.total = self._eval_total(self.category.value, self.category.cov)
 
-        self.prop, self.prop_cov, self.prop_std = self._eval_proportion(jknife, M, N_mean, self.cat, self.tot)
+        self.proportion = self._eval_proportion(jknife, M, N_mean, self.category.value, self.total.value)
 
         self.enrichment, self.M_prop = self._eval_enrichment(
-            M, M_tot, self.cat, self.tot)
+            M, M_tot, self.category.value, self.total.value)
 
         if not self.constrain_intercept:
-            self.intercept, self.intercept_std = self._extract_intercept(jknife)
+            self.intercept = self._extract_intercept(jknife)
 
         self.tot_delete_values = self._delete_vals_tot(jknife, N_mean, M)
         self.part_delete_values = self._delete_vals_part(jknife, N_mean, M)
@@ -247,31 +270,31 @@ class LDScoreRegression(ABC):
         n_annot = self.n_annot
         return jknife.delete_values[:, 0:n_annot] / N_mean
 
-    def _extract_coefs(self, jknife: jk.JackknifeEstimation, N_mean: float):
+    def _extract_coefs(self, jknife: jk.JackknifeEstimation, N_mean: float) -> Coefficient:
         """Get coefficient estimates + cov from the jackknife."""
         n_annot = self.n_annot
         coef = jknife.est[0, 0:n_annot] / N_mean
         coef_cov = jknife.jk_cov[0:n_annot, 0:n_annot] / N_mean ** 2
         coef_std = np.sqrt(np.diag(coef_cov))
-        return coef, coef_cov, coef_std
+        return Coefficient(coef, coef_cov, coef_std)
 
     @staticmethod
-    def _eval_catwise(M, coef, coef_cov):
+    def _eval_catwise(M, coef, coef_cov) -> Coefficient:
         """Convert coefficients to per-category h2 or gencov."""
         cat = np.multiply(M, coef)
         cat_cov = np.multiply(np.dot(M.T, M), coef_cov)
         cat_std = np.sqrt(np.diag(cat_cov))
-        return cat, cat_cov, cat_std
+        return Coefficient(cat, cat_cov, cat_std)
 
     @staticmethod
-    def _eval_total(cat, cat_cov):
+    def _eval_total(cat, cat_cov) -> Coefficient:
         """Convert per-category h2 to total h2 or gencov."""
         tot = float(np.sum(cat))
         tot_cov = float(np.sum(cat_cov))
         tot_std = float(np.sqrt(tot_cov))
-        return tot, tot_cov, tot_std
+        return Coefficient(tot, tot_cov, tot_std)
 
-    def _eval_proportion(self, jknife: jk.JackknifeEstimation, M, N_mean, cat, tot):  # wtf?
+    def _eval_proportion(self, jknife: jk.JackknifeEstimation, M, N_mean, cat, tot) -> Coefficient:  # wtf?
         """Convert total h2 and per-category h2 to per-category proportion h2 or gencov."""
         n_annot = self.n_annot
         n_blocks = jknife.delete_values.shape[0]
@@ -282,7 +305,7 @@ class LDScoreRegression(ABC):
         denom_delete_vals = np.dot(denom_delete_vals, np.ones((1, n_annot)))
         prop = jk.RatioJackknife(
             cat / tot, numer_delete_vals, denom_delete_vals)
-        return prop.est, prop.jk_cov, prop.jk_std
+        return Coefficient(prop.est, prop.jk_cov, prop.jk_std)
 
     def _eval_enrichment(self, M, M_tot, cat, tot):
         """Compute proportion of SNPs per-category enrichment for h2 or gencov."""
@@ -290,12 +313,12 @@ class LDScoreRegression(ABC):
         enrichment = np.divide(cat, M) / (tot / M_tot)
         return enrichment, M_prop
 
-    def _extract_intercept(self, jknife: jk.JackknifeEstimation):
+    def _extract_intercept(self, jknife: jk.JackknifeEstimation) -> Coefficient:
         """Extract intercept and intercept standard error from block jackknife."""
         n_annot = self.n_annot
         intercept = jknife.est[0, n_annot]
         intercept_std = jknife.jk_std[0, n_annot]
-        return intercept, intercept_std
+        return Coefficient(intercept, std=intercept_std)
 
     def _combine_twostep_jknives(self, step1_jknife: jk.JackknifeEstimation, step2_jknife: jk.JackknifeEstimation, c):
         """Combine free intercept and constrained intercept jackknives for --two-step."""
@@ -304,14 +327,14 @@ class LDScoreRegression(ABC):
         if n_annot > 2:
             raise NotImplementedError("twostep not yet implemented for partitioned LD Score")
 
-        step1_int, _ = self._extract_intercept(step1_jknife)
-        est = np.hstack([step2_jknife.est, np.array(step1_int).reshape((1, 1))])
+        step1_int = self._extract_intercept(step1_jknife)
+        est = np.hstack([step2_jknife.est, np.array(step1_int.value).reshape((1, 1))])
         delete_values = np.zeros((n_blocks, n_annot + 1))
         delete_values[:, n_annot] = step1_jknife.delete_values[:, n_annot]
         delete_values[:, 0:n_annot] = (
                 step2_jknife.delete_values -
                 c * (
-                    step1_jknife.delete_values[:, n_annot] - step1_int
+                        step1_jknife.delete_values[:, n_annot] - step1_int.value
                 ).reshape((n_blocks, n_annot))
         )  # check it
         pseudovalues = jk.Jackknife.delete_values_to_pseudovalues(delete_values, est)
@@ -322,7 +345,6 @@ class LDScoreRegression(ABC):
         )
         return jknife(est, jk_std, jk_est, jk_var, jk_cov, delete_values)
 
-    # new methods
     @staticmethod
     def _validate(*arrays):
         for array in arrays:
@@ -340,17 +362,21 @@ class LDScoreRegression(ABC):
             raise ValueError(f'M must have shape (1, n_annot), but {M.shape} were given.')
 
 
-class HSQ(LDScoreRegression):
+class HSQAdditive(LDScoreRegression):
+    """
+    Additive heritability
+    """
     null_intercept = 1.
 
     def __init__(
-        self,
-        y, x, w, N, M,
-        n_blocks=200,
-        intercept=None,
-        slow=False,
-        two_step=None,
-        old_weights=False
+            self,
+            y, x, w, N, M,
+            n_blocks=200,
+            intercept=None,
+            slow=False,
+            two_step=None,
+            old_weights=False,
+            additive_weights=None
     ):
         """
 
@@ -368,30 +394,30 @@ class HSQ(LDScoreRegression):
             SNP sample size
         n_blocks : int
             number of blocks
-        intercept : float
+        intercept : float | None
             regression intercept
         slow : bool, default=False
             use slow jackknife or not
-        two_step : float or None
-            #todo
+        two_step : float | None
+            cutoff for two-step estimator
         old_weights : bool
-            #todo
+            whether use old weights
         """
 
         step1_idx_mask = two_step if two_step is None else (y < two_step)
         super().__init__(
             y, x, w, N, M, n_blocks,
             intercept=intercept, slow=slow,
-            step1_idx_mask=step1_idx_mask, old_weights=old_weights
+            step1_idx_mask=step1_idx_mask, old_weights=old_weights,
+            additive_weights=additive_weights
         )
 
         self.mean_chisq, self.lambda_gc = self._summarize_chisq(y)
         if not self.constrain_intercept:
-            self.ratio, self.ratio_std = self._ratio(
-                self.intercept, self.intercept_std, self.mean_chisq
+            self.ratio = self._ratio(
+                self.intercept.value, self.intercept.std, self.mean_chisq
             )
 
-    # *#*#*#*#*#*#* *#*#*#*#*#*#* OK before *#*#*#*#*#*#* *#*#*#*#*#*#*
     def _update_func(
         self,
         x: Tuple[np.ndarray, ...],
@@ -409,7 +435,7 @@ class HSQ(LDScoreRegression):
         x is the output of np.linalg.lstsq
         x[0] is the regression coefficients
         x[0].shape is (# of dimensions, 1)
-        the last element of x[0] is the intercept.
+        value x[0, -1] is the intercept.
 
         intercept is None --> free intercept
         intercept is not None --> constrained intercept
@@ -423,13 +449,16 @@ class HSQ(LDScoreRegression):
 
         ld = ref_ld_tot[:, 0].reshape(w_ld.shape)  # remove intercept
         w = self.weights(ld, w_ld, N, M, hsq, intercept)
+        self._weights_checkpoint = w.copy()
         return w
 
     def _update_weights(self, ld, w_ld, N, M, hsq, intercept, ii=None):
         if intercept is None:
             intercept = self.null_intercept
+        w = self.weights(ld, w_ld, N, M, hsq, intercept)
+        self._weights_checkpoint = w.copy()
 
-        return self.weights(ld, w_ld, N, M, hsq, intercept)
+        return self._weights_checkpoint
 
     @staticmethod
     def weights(ld, w_ld, N, M, hsq, intercept=None):
@@ -471,14 +500,14 @@ class HSQ(LDScoreRegression):
         w = np.multiply(het_w, oc_w)
         return w
 
-    @staticmethod  # @OK
+    @staticmethod
     def _summarize_chisq(chisq):
         """Compute mean chi^2 and lambda_GC."""
         mean_chisq = np.mean(chisq)
         lambda_gc = np.median(chisq.flatten()) / 0.4549
         return mean_chisq, lambda_gc
 
-    @staticmethod  # @OK
+    @staticmethod
     def _ratio(intercept, intercept_std, mean_chisq):
         """Compute ratio (intercept - 1) / (mean chi^2 - 1)"""
         if mean_chisq > 1.:
@@ -487,62 +516,99 @@ class HSQ(LDScoreRegression):
         else:
             ratio, ratio_std = np.nan, np.nan
 
-        return ratio, ratio_std
-
-    # todo overlap categories
-
-    def summary(self, ref_ld_colnames=None, P=None, K=None, overlap=False, additive=True):
-        """Constructs summary of the LD Score Regression."""
-        is_liab = P is not None and K is not None
-        T = 'Liability' if is_liab else 'Observed'
-        c = h2_obs_to_liability(1, P, K) if is_liab else 1.
-
-        summary = f"---------- {'Additive' if additive else 'Non-Additive'} Summary ----------\n"
-        summary += f"Total {T} scale h2: {c * self.tot} ± {c * self.tot_std} (std.)\n"
-        summary += f"Lambda GC: {self.lambda_gc}\n"
-        summary += f"Mean chi2: {self.mean_chisq}\n"
-
-        if self.n_annot > 1:
-            raise NotImplementedError("case of n_annot > 1 is not implemented yet")
-
-        if self.constrain_intercept:
-            summary += f"Intercept (constrained): {self.intercept}\n"
-        else:
-            summary += f"Intercept (estimated): {self.intercept} ± {c * self.intercept_std} (std.)\n"
-            if self.mean_chisq > 1:
-                if self.ratio < 0:
-                    summary += "Ratio < 0 (usually indicates GC correction)\n"
-                else:
-                    summary += f"Ratio: {self.ratio} ± {c * self.ratio_std} (std.)\n"
-            else:
-                summary += "Ratio: NA (mean chi^2 < 1)\n"
-
-        summary += "---------- End of Summary ----------\n"
-        return summary
+        return Coefficient(ratio, std=ratio_std)
 
 
-class HSQTwoStaged:
+class HSQDominant(HSQAdditive):
+    null_intercept = .0
+
     def __init__(
-            self,
-            chisq,
-            x_add,
-            w_add,
-            x_dom,
-            w_dom,
-            N,
-            M_add,
-            M_dom,
-            n_blocks=200,
-            intercept_add=None,
-            intercept_dom=None,
-            slow=False,
-            two_step_add=None,
-            two_step_dom=None,
+        self,
+        chisq: np.ndarray,
+        x: np.ndarray,
+        w: np.ndarray,
+        w_add: np.ndarray,
+        N: np.ndarray,
+        M: np.ndarray,
+        n_blocks: int,
+        slow: bool,
+        hsq_add: HSQAdditive
     ):
-        self.hsq_add = HSQ(chisq, x_add, w_add, N, M_add, n_blocks, intercept_add, slow, two_step_add)
-        beta, intercept = self.hsq_add.jknife.est.flatten()
-        residuals = chisq - w_add * beta - np.ones_like(w_add) * intercept
-        self.hsq_dom = HSQ(residuals, x_dom, w_dom, N, M_dom, n_blocks, intercept_dom, slow, two_step_dom)
+        beta, *_ = hsq_add.coefficients.value.flatten()
+        intercept, *_ = hsq_add.intercept.value.flatten()
 
-    def summary(self):  # todo
-        return self.hsq_add.summary() + self.hsq_dom.summary(additive=False)
+        weights = hsq_add._weights_checkpoint
+
+        min_ld = np.min(w_add.flatten())
+        if min_ld < 0:
+            w += abs(min_ld) + 1
+            x += abs(min_ld) + 1
+
+        residuals = irwls.reweigh(chisq - w_add * beta - np.ones_like(w_add) * intercept, weights)
+
+        with open('/home/bayar/git/icg/nldsc-project/notebooks/residuals.txt', 'w') as f:
+            import json
+            json.dump({'residuals': residuals.tolist(),
+                       'weights': weights.tolist(),
+                       'chisq': chisq.tolist(),
+                       'x': w.tolist(),
+                       'xa': w_add.tolist(),
+                       'beta': beta,
+                       'intercept': intercept},
+                      f)
+
+        super().__init__(
+            residuals, x=x, w=w, N=N, M=M,
+            n_blocks=n_blocks,
+            intercept=None,
+            slow=slow,
+            two_step=None,
+            #additive_weights=weights
+        )
+
+
+class HSQEstimator:
+    def __init__(
+        self,
+        chisq: np.ndarray,
+        x_add,
+        w_add,
+        x_dom,
+        w_dom,
+        N,
+        M_add,
+        M_dom,
+        n_blocks=200,
+        intercept_add=None,
+        slow=False,
+        two_step=None
+    ):
+        log.info("Estimating additive heritability...")
+        self.additive = HSQAdditive(chisq, x_add, w_add, N, M_add, n_blocks, intercept_add, slow, two_step)
+        log.info("Estimating non-additive heritability...")
+        self.dominant = HSQDominant(chisq, x_dom, w_dom, w_add, N, M_dom, n_blocks, slow, hsq_add=self.additive)
+
+    def summary(self):
+        summary_dict = {
+            "additive": {
+                "hsq": self.additive.total.value,
+                "hsq.std": self.additive.total.std,
+                "lambda_gc": self.additive.lambda_gc,
+                "chisq.mean": self.additive.mean_chisq,
+
+                "intercept": self.additive.intercept.value,
+                "intercept.std": self.additive.intercept.std,
+                "intercept.constrained": self.additive.constrain_intercept
+
+            },
+            "dominant": {
+                "h2": self.dominant.total.value,
+                "h2.std": self.dominant.total.std,
+                "residuals.mean": self.dominant.mean_chisq,
+
+                "intercept": self.dominant.intercept.value,
+                "intercept.std": self.additive.intercept.std,
+            }
+        }
+
+        return summary_dict

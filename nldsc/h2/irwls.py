@@ -5,7 +5,8 @@ Iteratively re-weighted least squares.
 """
 import numpy as np
 
-import jackknife as jk
+from core.logger import log
+from . import jackknife as jk
 
 
 def reweigh(x, w):
@@ -24,7 +25,7 @@ def reweigh(x, w):
     x_new : np.ndarray with shape (n, p)
         x_new[i,j] = x[i,j] * w'[i], where w' is w normalized to have sum 1.
 
-    Raises
+    Raise
     ------
     ValueError :
         If any element of w is <= 0 (negative weights are not meaningful in WLS).
@@ -71,7 +72,7 @@ def wls(x, y, w):
     return coef
 
 
-def irwls(x, y, update_func, n_blocks, w, slow=False, separators=None):
+def irwls(x, y, update_func, n_blocks, w, slow=False, separators=None, is_dominant=False):
     """
     Iteratively re-weighted least squares (IRWLS).
 
@@ -107,14 +108,16 @@ def irwls(x, y, update_func, n_blocks, w, slow=False, separators=None):
     if w.shape != (n, 1):
         raise ValueError(f'w has shape {y.shape}. w must have shape ({n}, 1).')
 
-    w = np.sqrt(w)
-    for i in range(2):  # update this later
-        new_w = np.sqrt(update_func(wls(x, y, w)))
-        if new_w.shape != w.shape:
-            print('IRWLS update:', new_w.shape, w.shape)
-            raise ValueError('New weights must have same shape.')
-        else:
-            w = new_w
+    if not is_dominant:
+        w = np.sqrt(w)
+
+        for i in range(2):  # update this later
+            new_w = np.sqrt(update_func(wls(x, y, w)))
+            if new_w.shape != w.shape:
+                log.exception(f'IRWLS update: shape={w.shape}->{new_w.shape}')
+                raise ValueError('New weights must have same shape.')
+            else:
+                w = new_w
 
     x = reweigh(x, w)
     y = reweigh(y, w)

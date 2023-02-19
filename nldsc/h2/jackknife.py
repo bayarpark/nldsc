@@ -380,9 +380,9 @@ class LSTSQJackknifeFast(Jackknife):
 
         Parameters
         ----------
-        xty_block_values : np.array with shape (n_blocks, p)
+        xty_block_values : np.ndarray with shape (n_blocks, p)
             Block values of X^T Y.
-        xtx_block_values : 3D np.array with shape (n_blocks, p, p)
+        xtx_block_values : 3D np.ndarray with shape (n_blocks, p, p)
             Block values of X^T X
 
         Returns
