@@ -108,9 +108,8 @@ def irwls(x, y, update_func, n_blocks, w, slow=False, separators=None, is_domina
     if w.shape != (n, 1):
         raise ValueError(f'w has shape {y.shape}. w must have shape ({n}, 1).')
 
+    w = np.sqrt(w)
     if not is_dominant:
-        w = np.sqrt(w)
-
         for i in range(2):  # update this later
             new_w = np.sqrt(update_func(wls(x, y, w)))
             if new_w.shape != w.shape:

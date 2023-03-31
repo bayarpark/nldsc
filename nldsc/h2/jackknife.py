@@ -427,7 +427,7 @@ class LSTSQJackknifeFast(Jackknife):
             If delete design matrix is singular.
         ValueError :
             If the last two dimensions of xtx_block_values are not equal or if the first two
-        dimensions of xtx_block_values do not equal the shape of xty_block_values.
+            dimensions of xtx_block_values do not equal the shape of xty_block_values.
 
         """
         n_blocks, p = cls._check_and_get_shape_block(xty_block_values, xtx_block_values)

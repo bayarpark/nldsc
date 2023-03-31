@@ -4747,7 +4747,6 @@ ProgressBar get_ld_progress_bar(size_t n_snp) {
             option::Lead{">"},
             option::Remainder{" "},
             option::End{"]"},
-            option::PrefixText{"Estimating LD Scores"},
             option::ForegroundColor{Color::yellow},
             option::ShowElapsedTime{true},
             option::ShowPercentage{true},

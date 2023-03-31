@@ -160,7 +160,7 @@ class LDScoreRegression(ABC):
             initial_w = self._update_weights(
                 x_tot, w, N, M_tot, tot_agg, intercept)
         else:
-            initial_w = additive_weights
+            initial_w = np.square(additive_weights)
 
         N_mean = float(np.mean(N))  # keep condition number low
         x = np.multiply(N, x) / N_mean
@@ -534,28 +534,12 @@ class HSQDominant(HSQAdditive):
         slow: bool,
         hsq_add: HSQAdditive
     ):
-        beta, *_ = hsq_add.coefficients.value.flatten()
+        beta, *_ = np.mean(N).flatten()*hsq_add.coefficients.value.flatten()
         intercept, *_ = hsq_add.intercept.value.flatten()
 
         weights = hsq_add._weights_checkpoint
 
-        min_ld = np.min(w_add.flatten())
-        if min_ld < 0:
-            w += abs(min_ld) + 1
-            x += abs(min_ld) + 1
-
         residuals = irwls.reweigh(chisq - w_add * beta - np.ones_like(w_add) * intercept, weights)
-
-        with open('/home/bayar/git/icg/nldsc-project/notebooks/residuals.txt', 'w') as f:
-            import json
-            json.dump({'residuals': residuals.tolist(),
-                       'weights': weights.tolist(),
-                       'chisq': chisq.tolist(),
-                       'x': w.tolist(),
-                       'xa': w_add.tolist(),
-                       'beta': beta,
-                       'intercept': intercept},
-                      f)
 
         super().__init__(
             residuals, x=x, w=w, N=N, M=M,
@@ -563,7 +547,8 @@ class HSQDominant(HSQAdditive):
             intercept=None,
             slow=slow,
             two_step=None,
-            #additive_weights=weights
+            # old_weights=True,  # warn!
+            # additive_weights=weights
         )
 
 
@@ -599,11 +584,10 @@ class HSQEstimator:
                 "intercept": self.additive.intercept.value,
                 "intercept.std": self.additive.intercept.std,
                 "intercept.constrained": self.additive.constrain_intercept
-
             },
             "dominant": {
-                "h2": self.dominant.total.value,
-                "h2.std": self.dominant.total.std,
+                "hsq": self.dominant.total.value,
+                "hsq.std": self.dominant.total.std,
                 "residuals.mean": self.dominant.mean_chisq,
 
                 "intercept": self.dominant.intercept.value,

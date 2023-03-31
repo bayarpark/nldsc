@@ -2,7 +2,7 @@ from typing import Tuple
 from pathlib import Path
 
 from core.common import Data
-from core.logger import log, log_exit
+from core.logger import log
 
 import pandas as pd
 
@@ -91,7 +91,7 @@ class LDScoreReader(Data):
                 return self._read_file()
 
         except ValueError as ex:
-            log_exit('Error parsing reference panel LD Score', ex)
+            raise RuntimeError('Error parsing reference panel LD Score', ex)
 
     def _read_folder(self):
         scores_path = self.path.glob("*.L2")

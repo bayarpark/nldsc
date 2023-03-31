@@ -1,1 +1,1 @@
-from .logger import log, log_exit
+from .logger import log

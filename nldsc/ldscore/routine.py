@@ -82,7 +82,7 @@ def estimate_lds(
         maf=maf_thr_.data,
         std_thr=std_thr_.data,
         rsq_thr=rsq_thr_.data,
-        positions=getattr(bim_, wind_metric)
+        positions=getattr(bim_, ld_wind_.metric)
     )
 
     log.info("Running the estimator. It may take a long time.")

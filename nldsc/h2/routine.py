@@ -3,7 +3,7 @@ import pandas as pd
 
 from core.common import elapsed_time, NLDSCParameterError
 from core.logger import log
-from .utils import merge_ld_sumstats, cols
+from .utils import merge_ld_sumstats, cols, prettify_summary, attempt_save
 from .common import GWASSumStatsReader, LDScoreReader
 from .regressions import HSQEstimator
 
@@ -24,7 +24,6 @@ def _estimate_h2(
 
     chisq = cols(overall['Z'] ** 2, n_overall)
 
-    # почему мы выкидываем самые вкусные снипы?
     if chisq_max is not None:
         indices = np.ravel(chisq < chisq_max)
         overall = overall.iloc[indices]
@@ -70,6 +69,7 @@ def estimate_h2(
     chisq_max: float = None,
     two_step: int = None,
     strategy: str = 'two-staged',
+    save_to_json: str = None
 ):
     log.info("Reading GWAS summary statistics...")
     sumstats = GWASSumStatsReader(sumstats, alleles=False, dropna=True)
@@ -96,4 +96,9 @@ def estimate_h2(
         strategy=strategy,
     )
 
-    print(hsq_est.summary())
+    summary = hsq_est.summary()
+    print(prettify_summary(summary))
+
+    if save_to_json:
+        attempt_save(save_to_json, summary)
+
