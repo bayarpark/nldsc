@@ -1,6 +1,6 @@
-## nldsc — (non)-additive LD Score Regression
+## `nldsc` — (non)-additive LD Score Regression
 
-This project is an extension of the LD Score Regression ([ldsc](https://github.com/bulik/ldsc)), a widely-used method for estimating the heritability of complex traits using summary statistics from genome-wide association studies (GWAS). This extension allows to take into account non-additive effects (*but we consider only dominance for now*), which have been shown to play a significant role in the genetic architecture of many complex traits. 
+This project is an extension of the LD Score Regression ([`ldsc`](https://github.com/bulik/ldsc)), a widely-used method for estimating the heritability of complex traits using summary statistics from genome-wide association studies (GWAS). This extension allows to take into account non-additive effects (*but we consider only dominance for now*), which have been shown to play a significant role in the genetic architecture of many complex traits. 
 
 
 ### Implementation Details
@@ -64,7 +64,7 @@ This project is licensed under the GNU GPL-3.0. See [License File](https://githu
 ## Authors
 Bayar Park (Novosibirsk State University)
 
-The package (especially the `h2` module) relies heavily on `ldsc` package written by  Brendan Bulik-Sullivan (Broad Institute of MIT and Harvard) and Hilary Finucane (MIT Department of Mathematics)
+This package (especially the `h2` module) is largely based on the sources of the [`ldsc`](https://github.com/bulik/ldsc) package written by Brendan Bulik-Sullivan (Broad Institute of MIT and Harvard) and Hilary Finucane (MIT Department of Mathematics)
 
 
 
