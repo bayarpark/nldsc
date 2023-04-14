@@ -294,7 +294,7 @@ class LDScoreRegression(ABC):
         tot_std = float(np.sqrt(tot_cov))
         return Coefficient(tot, tot_cov, tot_std)
 
-    def _eval_proportion(self, jknife: jk.JackknifeEstimation, M, N_mean, cat, tot) -> Coefficient:  # wtf?
+    def _eval_proportion(self, jknife: jk.JackknifeEstimation, M, N_mean, cat, tot) -> Coefficient:
         """Convert total h2 and per-category h2 to per-category proportion h2 or gencov."""
         n_annot = self.n_annot
         n_blocks = jknife.delete_values.shape[0]
@@ -336,7 +336,7 @@ class LDScoreRegression(ABC):
                 c * (
                         step1_jknife.delete_values[:, n_annot] - step1_int.value
                 ).reshape((n_blocks, n_annot))
-        )  # check it
+        )
         pseudovalues = jk.Jackknife.delete_values_to_pseudovalues(delete_values, est)
         jk_est, jk_var, jk_std, jk_cov = jk.Jackknife.jknife(pseudovalues)
         jknife = namedtuple(

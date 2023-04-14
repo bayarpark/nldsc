@@ -1,6 +1,6 @@
 import click
 
-from core import routines
+import routines
 from core.logger import log
 
 __version__ = "0.1.4+alpha"
