@@ -494,7 +494,7 @@ class HSQAdditive(LDScoreRegression):
         hsq = np.clip(hsq, .0, 1.)
         ld = np.fmax(ld, 1.)
         w_ld = np.fmax(w_ld, 1.)
-        c = hsq * N / M
+        c = hsq * (N - 1) / M
         het_w = 1. / (2. * np.square(intercept + np.multiply(c, ld)))
         oc_w = 1. / w_ld
         w = np.multiply(het_w, oc_w)
