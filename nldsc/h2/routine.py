@@ -24,13 +24,16 @@ def _estimate_h2(
 
     chisq = cols(overall['Z'] ** 2, n_overall)
 
-    if chisq_max is not None:
-        indices = np.ravel(chisq < chisq_max)
-        overall = overall.iloc[indices]
-        n_overall, n_old = len(overall), n_overall
-        log.info(f'Removed {n_old - n_overall} SNPs with chi^2 > {chisq_max} ({n_overall} SNPs remain)')
+    if chisq_max is None:
+        chisq_max = max(0.001 * overall['N'].max(), 80)
 
-        chisq = cols(chisq[indices], n_overall)
+
+    indices = np.ravel(chisq < chisq_max)
+    overall = overall.iloc[indices]
+    n_overall, n_old = len(overall), n_overall
+    log.info(f'Removed {n_old - n_overall} SNPs with chi^2 > {chisq_max} ({n_overall} SNPs remain)')
+
+    chisq = cols(chisq[indices], n_overall)
 
     ref_ld_add = cols(overall['L2'], n_overall)
     ref_ld_dom = cols(overall['L2D'], n_overall)
@@ -67,6 +70,7 @@ def estimate_h2(
     n_blocks: int = 200,
     intercept_h2: float = None,
     chisq_max: float = None,
+    use_m: bool = False,
     two_step: int = None,
     strategy: str = 'two-staged',
     save_to_json: str = None
@@ -75,7 +79,7 @@ def estimate_h2(
     sumstats = GWASSumStatsReader(sumstats, alleles=False, dropna=True)
 
     log.info("Reading LD Scores...")
-    ld = LDScoreReader(ldscore)
+    ld = LDScoreReader(ldscore, use_m=use_m)
 
     if chisq_max is None:
         chisq_max = max(sumstats.data['N'].max() * 1e-3, 80)

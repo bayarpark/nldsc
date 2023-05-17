@@ -10,6 +10,7 @@ Shape convention is (n_snp, n_annot) for all classes.
 Last column = intercept.
 
 """
+from __future__ import annotations
 
 from collections import namedtuple
 from dataclasses import dataclass
@@ -170,7 +171,6 @@ class LDScoreRegression(ABC):
             yp = y.copy()
         else:
             yp = y - intercept
-            self.intercept_std = np.nan  # replaced "NaN"
 
         if step1_idx_mask is not None and self.constrain_intercept:
             raise ValueError("two-step is not compatible with constrain_intercept.")
@@ -234,6 +234,8 @@ class LDScoreRegression(ABC):
 
         if not self.constrain_intercept:
             self.intercept = self._extract_intercept(jknife)
+        else:
+            self.intercept = Coefficient(intercept, np.nan, "intercept")
 
         self.tot_delete_values = self._delete_vals_tot(jknife, N_mean, M)
         self.part_delete_values = self._delete_vals_part(jknife, N_mean, M)
@@ -440,7 +442,7 @@ class HSQAdditive(LDScoreRegression):
         intercept is None --> free intercept
         intercept is not None --> constrained intercept
         """
-        hsq = M * x[0][0] / N_mean
+        hsq = M * x[0][0] / (N_mean - 1)
         if intercept is None:
             intercept = max(x[0][1])  # divide by zero error if intercept < 0
         else:
@@ -544,12 +546,53 @@ class HSQDominant(HSQAdditive):
         super().__init__(
             residuals, x=x, w=w, N=N, M=M,
             n_blocks=n_blocks,
-            intercept=None,
+            intercept=0,
             slow=slow,
             two_step=None,
-            # old_weights=True,  # warn!
-            # additive_weights=weights
+            #old_weights=True,  # warn!
+            #additive_weights=weights
         )
+
+
+    @staticmethod
+    def weights(ld, w_ld, N, M, hsq, intercept=None):
+        """
+        Regression weights
+
+        Parameters
+        ----------
+        ld : np.matrix with shape (n_snp, 1)
+            LD Scores (non-partitioned).
+        w_ld : np.matrix with shape (n_snp, 1)
+            LD Scores (non-partitioned) computed with sum r^2 taken over only those SNPs included
+            in the regression.
+        N :  np.ndarray of ints > 0 with shape (n_snp, 1)
+            Number of individuals sampled for each SNP.
+        M : float > 0
+            Number of SNPs used for estimating LD Score (need not equal number of SNPs included in
+            the regression).
+        hsq : float in [0,1]
+            Heritability estimate
+        intercept : float
+            Intercept
+
+        Returns
+        -------
+        w : np.matrix with shape (n_snp, 1)
+            Regression weights. Approx equal to reciprocal of conditional variance function.
+        """
+        M = float(M)
+        if intercept is None:
+            intercept = 1.
+
+        hsq = np.clip(hsq, .0, 1.)
+        ld = np.fmax(ld, 1.)
+        w_ld = np.fmax(w_ld, 1.)
+        c = hsq * (N - 1) / M
+        het_w = 1. / (2. * np.square(intercept + np.multiply(c, ld)) + 1e-10)
+        oc_w = 1. / w_ld
+        w = np.multiply(het_w, oc_w)
+        return w
 
 
 class HSQEstimator:
