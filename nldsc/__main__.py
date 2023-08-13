@@ -69,6 +69,7 @@ def main():
               , metavar="B"
               , is_flag=True
               , default=False)
+@click.option("--display")
 @handle_exception
 def est_ld(bfile, out, ld_wind_kb, ld_wind_cm, maf_thr, std_thr, rsq_thr, extra):
     if sum(map(bool, [ld_wind_kb, ld_wind_cm])) != 1:
@@ -126,6 +127,7 @@ def est_ld(bfile, out, ld_wind_kb, ld_wind_cm, maf_thr, std_thr, rsq_thr, extra)
               , help="Path to file where to write results"
               , metavar='W'
               , default=None)
+@click.option("--display")
 @handle_exception
 def est_h2(sumstats, ref_ld, w_ld, strategy, chisq_max, n_blocks, save_to_json):
     if ref_ld != w_ld:
