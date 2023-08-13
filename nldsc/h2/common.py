@@ -79,8 +79,10 @@ class GWASSumStatsReader(Data):
 class LDScoreReader(Data):
     columns = ['CHR', 'SNP', 'BP', 'L2', 'L2D']
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, use_m: bool):
         self.path = Path(path)
+        self._use_m = use_m
+
         self._data, self.M, self.MD = self.read()
 
     def read(self):
@@ -114,10 +116,15 @@ class LDScoreReader(Data):
         if path is None:
             path = self.path
 
-        precalculated = path.with_suffix('.M').exists()
+        suffix = '.M' if self._use_m else '.M_5_50'
+        precalculated = path.with_suffix(suffix).exists()
+        if not precalculated and not self._use_m:
+            suffix = '.M'
+            precalculated = path.with_suffix(suffix).exists()
+
         score = self._read_l2(str(path))
         if precalculated:
-            m, md = self._read_m(str(path.with_suffix('.M')))
+            m, md = self._read_m(str(path.with_suffix(suffix)))
         else:
             m = len(score['L2'])
             md = m * (score['WSDE'] / score['WSA']).mean()

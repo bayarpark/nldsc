@@ -69,7 +69,10 @@ def main():
               , metavar="B"
               , is_flag=True
               , default=False)
-@click.option("--display")
+@click.option("--display"
+              , help="Display traceback"
+              , is_flag=True
+              , default=False)
 @handle_exception
 def est_ld(bfile, out, ld_wind_kb, ld_wind_cm, maf_thr, std_thr, rsq_thr, extra):
     if sum(map(bool, [ld_wind_kb, ld_wind_cm])) != 1:
@@ -117,19 +120,26 @@ def est_ld(bfile, out, ld_wind_kb, ld_wind_cm, maf_thr, std_thr, rsq_thr, extra)
               , help="Maximum value of the chi-square statistic. "
                      "All values greater than `chisq-max` are replaced by `chisq-max`"
               , metavar='F'
-              , default=80)
+              , default=None)
 @click.option('--n-blocks'
               , help="Number of jackknife blocks"
               , metavar='N'
               , default=200)
+@click.option('--use-M'
+              , help="Use .M file instead of .M_5_50"
+              , is_flag=True
+              , default=False)
 @click.option('-s'
               , '--save-to-json'
               , help="Path to file where to write results"
               , metavar='W'
               , default=None)
-@click.option("--display")
+@click.option("--display"
+              , help="Display traceback"
+              , is_flag=True
+              , default=False)
 @handle_exception
-def est_h2(sumstats, ref_ld, w_ld, strategy, chisq_max, n_blocks, save_to_json):
+def est_h2(sumstats, ref_ld, w_ld, strategy, chisq_max, n_blocks, use_m, save_to_json):
     if ref_ld != w_ld:
         raise NotImplementedError("Method for different annotations is not yet implemented. "
                                   "Please, make sure that `ref_ld` and `w_ld` are equal.")

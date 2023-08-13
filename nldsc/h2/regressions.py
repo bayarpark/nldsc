@@ -549,8 +549,8 @@ class HSQDominant(HSQAdditive):
             intercept=0,
             slow=slow,
             two_step=None,
-            old_weights=True,  # warn!
-            additive_weights=weights
+            #old_weights=True,  # warn!
+            #additive_weights=weights
         )
 
 
