@@ -67,4 +67,20 @@ Bayar Park (Novosibirsk State University)
 This package (especially the `h2` module) is largely based on the sources of the [`ldsc`](https://github.com/bulik/ldsc) package written by Brendan Bulik-Sullivan (Broad Institute of MIT and Harvard) and Hilary Finucane (MIT Department of Mathematics)
 
 
+## Cite
+
+```bibtex
+@inproceedings{nldsc2023,
+  author       = {Bayar Pak and Elizaveta E. Elgaeva and Gulnara R. Svishcheva and Yakov A. Tsepilov},
+  title        = {Estimating non-additive heritability using additive genome-wide association study},
+  booktitle    = {51st European Mathematical Genetics Meeting (EMGM) 2023, Abstracts},
+  journal      = {Human Heredity},
+  year         = {2023},
+  volume       = {88},
+  number       = {Suppl.\ 1},
+  pages        = {72},
+  publisher    = {Karger},
+  doi          = {10.1159/000535389},
+}
+```
 
